@@ -1,0 +1,12 @@
+(env
+ ; Default/dev profile
+ (dev
+  (flags (:standard -w -40)))
+ ; Release profile for macOS and general use
+ (release
+  (flags (:standard -w -40))
+  (ocamlopt_flags (:standard -O3)))
+ ; Static profile for Linux (Alpine musl) - includes release optimizations
+ (static
+  (flags (:standard -w -40 -cclib -static))
+  (ocamlopt_flags (:standard -O3))))
