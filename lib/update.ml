@@ -18,17 +18,19 @@ let perform_search query =
 let copy_selected model =
   if model.Model.results = [] || Model.is_no_results model.results then (model, Command.Noop)
   else
-    let selected = List.nth model.results model.selected_index in
-    let magnet = Magnet.make ~info_hash:selected.info_hash ~name:selected.name in
-    match Clipboard.copy_to_clipboard magnet with
-    | Ok () ->
-        let truncated_name =
-          if String.length selected.name > 40 then String.sub selected.name 0 37 ^ "..."
-          else selected.name
-        in
-        ( { model with mode = Notification (Printf.sprintf "Copied: %s" truncated_name) },
-          Command.Noop )
-    | Error _ -> ({ model with error = Some "Failed to copy to clipboard" }, Command.Noop)
+    match List.nth_opt model.results model.selected_index with
+    | None -> (model, Command.Noop)
+    | Some selected ->
+        let magnet = Magnet.make ~info_hash:selected.info_hash ~name:selected.name in
+        match Clipboard.copy_to_clipboard magnet with
+        | Ok () ->
+            let truncated_name =
+              if String.length selected.name > 40 then String.sub selected.name 0 37 ^ "..."
+              else selected.name
+            in
+            ( { model with mode = Notification (Printf.sprintf "Copied: %s" truncated_name) },
+              Command.Noop )
+        | Error _ -> ({ model with error = Some "Failed to copy to clipboard" }, Command.Noop)
 
 let update event (model : Model.model) =
   match event with
@@ -47,7 +49,7 @@ let update event (model : Model.model) =
         let SearchResults results = perform_search model.query in
         (handle_search_results model results, Command.Noop)
   | Event.KeyDown Enter when model.mode = Browsing -> copy_selected model
-  | Event.KeyDown (Key "j") when model.mode = Browsing ->
+  | Event.KeyDown (Key "j" | Down) when model.mode = Browsing ->
       let max_idx = max 0 (List.length model.results - 1) in
       let new_idx = min (model.selected_index + 1) max_idx in
       let new_scroll =
@@ -55,22 +57,7 @@ let update event (model : Model.model) =
         else model.scroll_offset
       in
       ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
-  | Event.KeyDown Down when model.mode = Browsing ->
-      let max_idx = max 0 (List.length model.results - 1) in
-      let new_idx = min (model.selected_index + 1) max_idx in
-      let new_scroll =
-        if new_idx >= model.scroll_offset + Model.page_size then model.scroll_offset + 1
-        else model.scroll_offset
-      in
-      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
-  | Event.KeyDown (Key "k") when model.mode = Browsing ->
-      let new_idx = max 0 (model.selected_index - 1) in
-      let new_scroll =
-        if new_idx < model.scroll_offset then model.scroll_offset - 1
-        else model.scroll_offset
-      in
-      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
-  | Event.KeyDown Up when model.mode = Browsing ->
+  | Event.KeyDown (Key "k" | Up) when model.mode = Browsing ->
       let new_idx = max 0 (model.selected_index - 1) in
       let new_scroll =
         if new_idx < model.scroll_offset then model.scroll_offset - 1
@@ -81,10 +68,11 @@ let update event (model : Model.model) =
       ({ model with mode = Searching }, Command.Noop)
   | Event.KeyDown (Key "i") when model.mode = Browsing ->
       ({ model with mode = Searching }, Command.Noop)
-  | Event.KeyDown Escape when model.mode = Searching && model.query <> "" ->
-      ({ model with query = "" }, Command.Noop)
-  | Event.KeyDown Escape when model.mode = Searching && model.results <> [] ->
-      ({ model with mode = Browsing }, Command.Noop)
+  | Event.KeyDown Escape when model.mode = Searching ->
+      if model.query <> "" then ({ model with query = "" }, Command.Noop)
+      else if model.results <> [] && not (Model.is_no_results model.results) then
+        ({ model with mode = Browsing }, Command.Noop)
+      else (model, Command.Noop)
   | Event.KeyDown Backspace when model.mode = Searching ->
       let query =
         if String.length model.query > 0 then

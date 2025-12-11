@@ -32,13 +32,12 @@ let page_size = 15
 
 let make ?initial_query () =
   let query = Option.value ~default:"" initial_query in
-  let mode = if query = "" then Searching else Searching in
   {
     query;
     results = [];
     selected_index = 0;
     scroll_offset = 0;
-    mode;
+    mode = Searching;
     loading = query <> "";
     error = None;
   }
