@@ -22,10 +22,13 @@ type model = {
   query : string;
   results : search_result list;
   selected_index : int;
+  scroll_offset : int;
   mode : mode;
   loading : bool;
   error : string option;
 }
+
+let page_size = 15
 
 let make ?initial_query () =
   let query = Option.value ~default:"" initial_query in
@@ -34,6 +37,7 @@ let make ?initial_query () =
     query;
     results = [];
     selected_index = 0;
+    scroll_offset = 0;
     mode;
     loading = query <> "";
     error = None;

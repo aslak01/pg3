@@ -6,7 +6,8 @@ let handle_search_results model results =
   match results with
   | Ok rs ->
       let mode = if rs = [] || Model.is_no_results rs then Model.Searching else Model.Browsing in
-      { model with Model.results = rs; loading = false; error = None; mode; selected_index = 0 }
+      let sorted_rs = List.sort (fun a b -> compare b.Model.seeders a.Model.seeders) rs in
+      { model with Model.results = sorted_rs; loading = false; error = None; mode; selected_index = 0; scroll_offset = 0 }
   | Error err -> { model with Model.loading = false; error = Some err }
 
 let perform_search query =
@@ -49,17 +50,33 @@ let update event (model : Model.model) =
   | Event.KeyDown (Key "j") when model.mode = Browsing ->
       let max_idx = max 0 (List.length model.results - 1) in
       let new_idx = min (model.selected_index + 1) max_idx in
-      ({ model with selected_index = new_idx }, Command.Noop)
+      let new_scroll =
+        if new_idx >= model.scroll_offset + Model.page_size then model.scroll_offset + 1
+        else model.scroll_offset
+      in
+      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
   | Event.KeyDown Down when model.mode = Browsing ->
       let max_idx = max 0 (List.length model.results - 1) in
       let new_idx = min (model.selected_index + 1) max_idx in
-      ({ model with selected_index = new_idx }, Command.Noop)
+      let new_scroll =
+        if new_idx >= model.scroll_offset + Model.page_size then model.scroll_offset + 1
+        else model.scroll_offset
+      in
+      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
   | Event.KeyDown (Key "k") when model.mode = Browsing ->
       let new_idx = max 0 (model.selected_index - 1) in
-      ({ model with selected_index = new_idx }, Command.Noop)
+      let new_scroll =
+        if new_idx < model.scroll_offset then model.scroll_offset - 1
+        else model.scroll_offset
+      in
+      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
   | Event.KeyDown Up when model.mode = Browsing ->
       let new_idx = max 0 (model.selected_index - 1) in
-      ({ model with selected_index = new_idx }, Command.Noop)
+      let new_scroll =
+        if new_idx < model.scroll_offset then model.scroll_offset - 1
+        else model.scroll_offset
+      in
+      ({ model with selected_index = new_idx; scroll_offset = new_scroll }, Command.Noop)
   | Event.KeyDown (Key "/") when model.mode = Browsing ->
       ({ model with mode = Searching }, Command.Noop)
   | Event.KeyDown (Key "i") when model.mode = Browsing ->

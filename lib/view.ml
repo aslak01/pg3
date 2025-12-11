@@ -57,10 +57,22 @@ let render (model : Model.model) =
     else if Model.is_no_results model.results then "\nNo results found."
     else if model.results = [] then ""
     else
-      let lines =
+      let total = List.length model.results in
+      let visible_results =
         model.results
-        |> List.mapi (fun i r -> render_result ~selected:(i = model.selected_index) r)
+        |> List.filteri (fun i _ -> i >= model.scroll_offset && i < model.scroll_offset + Model.page_size)
       in
-      "\n\nResults:\n" ^ String.concat "\n" lines
+      let lines =
+        visible_results
+        |> List.mapi (fun i r ->
+            let actual_index = model.scroll_offset + i in
+            render_result ~selected:(actual_index = model.selected_index) r)
+      in
+      let pagination_info =
+        let start_idx = model.scroll_offset + 1 in
+        let end_idx = min (model.scroll_offset + Model.page_size) total in
+        build help_style "\n[%d-%d of %d]" start_idx end_idx total
+      in
+      "\n\nResults:\n" ^ String.concat "\n" lines ^ pagination_info
   in
   String.concat "\n" [ title; help; ""; input_line; notification_line; error_line; loading_line; results_section; "" ]
