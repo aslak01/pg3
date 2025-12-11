@@ -2,17 +2,23 @@ open Lwt.Syntax
 
 let base_url = "https://apibay.org/q.php"
 
+let safe_int_of_string s =
+  match int_of_string_opt s with Some n -> n | None -> 0
+
+let safe_int64_of_string s =
+  match Int64.of_string_opt s with Some n -> n | None -> 0L
+
 let parse_result json =
   let open Yojson.Safe.Util in
   let id = json |> member "id" |> to_string in
   let name = json |> member "name" |> to_string in
   let info_hash = json |> member "info_hash" |> to_string in
-  let leechers = json |> member "leechers" |> to_string |> int_of_string in
-  let seeders = json |> member "seeders" |> to_string |> int_of_string in
-  let num_files = json |> member "num_files" |> to_string |> int_of_string in
-  let size = json |> member "size" |> to_string |> Int64.of_string in
+  let leechers = json |> member "leechers" |> to_string |> safe_int_of_string in
+  let seeders = json |> member "seeders" |> to_string |> safe_int_of_string in
+  let num_files = json |> member "num_files" |> to_string |> safe_int_of_string in
+  let size = json |> member "size" |> to_string |> safe_int64_of_string in
   let username = json |> member "username" |> to_string in
-  let added = json |> member "added" |> to_string |> int_of_string in
+  let added = json |> member "added" |> to_string |> safe_int_of_string in
   let status = json |> member "status" |> to_string in
   let category = json |> member "category" |> to_string in
   let imdb =

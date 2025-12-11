@@ -48,7 +48,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apk add --no-cache musl-dev gcc make m4 patch git
+          apk add --no-cache musl-dev gcc make m4 patch git gmp-dev
 
       - name: Setup opam
         run: |
