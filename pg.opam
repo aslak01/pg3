@@ -2,11 +2,11 @@
 opam-version: "2.0"
 synopsis: "Terminal torrent search"
 description: "A TUI for searching torrents with vim-style navigation"
-maintainer: ["Maintainer"]
-authors: ["Author"]
+maintainer: ["aslak01"]
+authors: ["aslak01"]
 license: "MIT"
-homepage: "https://github.com/user/pg"
-bug-reports: "https://github.com/user/pg/issues"
+homepage: "https://github.com/aslak01/pg"
+bug-reports: "https://github.com/aslak01/pg/issues"
 depends: [
   "ocaml" {>= "5.1"}
   "dune" {>= "3.16"}
@@ -18,6 +18,7 @@ depends: [
   "lwt"
   "yojson"
   "uri"
+  "spawn"
   "odoc" {with-doc}
 ]
 build: [
@@ -34,4 +35,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/user/pg.git"
+dev-repo: "git+https://github.com/aslak01/pg.git"
