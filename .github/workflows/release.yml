@@ -48,7 +48,9 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apk add --no-cache musl-dev gcc make m4 patch git
+          apk add --no-cache musl-dev gcc make m4 patch git gmp-dev linux-headers pkgconfig
+          # Verify gmp static library is available
+          ls -la /usr/lib/libgmp*
 
       - name: Setup opam
         run: |
@@ -59,11 +61,14 @@ jobs:
       - name: Install dependencies
         run: |
           eval $(opam env)
+          # Install zarith with explicit library paths for static linking
+          CFLAGS="-I/usr/include" LDFLAGS="-L/usr/lib" opam install zarith --yes
           opam install . --deps-only --yes
 
       - name: Build static binary
         run: |
           eval $(opam env)
+          # Build with static linking - zarith now knows where to find gmp
           OCAMLPARAM="_,ccopt=-static,cclib=-static" dune build --release
 
       - name: Verify static linking
