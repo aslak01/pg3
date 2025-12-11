@@ -48,7 +48,9 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apk add --no-cache musl-dev gcc make m4 patch git
+          apk add --no-cache musl-dev gcc make m4 patch git gmp-dev linux-headers pkgconfig
+          # Verify gmp static library is available
+          ls -la /usr/lib/libgmp*
 
       - name: Setup opam
         run: |
@@ -64,7 +66,7 @@ jobs:
       - name: Build static binary
         run: |
           eval $(opam env)
-          OCAMLPARAM="_,ccopt=-static,cclib=-static" dune build --release
+          LIBRARY_PATH=/usr/lib OCAMLPARAM="_,ccopt=-static -L/usr/lib,cclib=-static" dune build --release
 
       - name: Verify static linking
         run: |

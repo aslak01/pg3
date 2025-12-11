@@ -1,0 +1,4 @@
+(executable
+ (public_name pg)
+ (name main)
+ (libraries pg_lib))
