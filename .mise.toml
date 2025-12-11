@@ -1,0 +1,55 @@
+[tools]
+opam = "2.2.1"
+
+[env]
+OPAMSWITCH = "{{ cwd }}"
+
+[tasks.setup]
+description = "Initialize opam and install dependencies"
+run = """
+#!/usr/bin/env bash
+set -e
+
+# Skip opam init if already done
+if [ ! -d ~/.opam ]; then
+  echo "Initializing opam..."
+  opam init --bare --no-setup -y
+fi
+
+# Skip switch creation if _opam exists
+if [ ! -d _opam ]; then
+  echo "Creating local switch (this takes a few minutes first time)..."
+  opam switch create . 5.2.0 -y
+fi
+
+# Check if deps are installed by testing for minttea
+if ! opam exec -- ocamlfind query minttea >/dev/null 2>&1; then
+  echo "Installing dependencies..."
+  opam install dune -y
+  opam exec -- dune build 2>/dev/null || true
+  opam install . --deps-only -y
+else
+  echo "Dependencies already installed."
+fi
+
+echo "Setup complete!"
+"""
+
+[tasks.build]
+description = "Build the project"
+run = "opam exec -- dune build"
+
+[tasks.run]
+description = "Run pg"
+run = "opam exec -- dune exec pg --"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "opam exec -- dune clean"
+
+[tasks.reset]
+description = "Remove local switch and start fresh"
+run = """
+rm -rf _opam
+echo "Local switch removed. Run 'mise run setup' to reinstall."
+"""
