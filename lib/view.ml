@@ -29,7 +29,7 @@ let render (model : Model.model) =
   let title = build title_style "pg - Torrent Search" in
   let help =
     match model.mode with
-    | Searching -> build help_style "Type query, Enter to search, q to quit"
+    | Searching -> build help_style "Enter: search, Esc: clear, q: quit"
     | Browsing -> build help_style "j/k: navigate, Enter: copy magnet, /: search, q: quit"
     | Notification _ -> build help_style "Press any key to continue"
   in
@@ -75,4 +75,6 @@ let render (model : Model.model) =
       in
       "\n\nResults:\n" ^ String.concat "\n" lines ^ pagination_info
   in
-  String.concat "\n" [ title; help; ""; input_line; notification_line; error_line; loading_line; results_section; "" ]
+  [ title; help; ""; input_line; notification_line; error_line; loading_line; results_section ]
+  |> List.filter (fun s -> s <> "")
+  |> String.concat "\n"
