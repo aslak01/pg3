@@ -5,11 +5,11 @@
 (generate_opam_files true)
 
 (source
- (github user/pg))
+ (github aslak01/pg))
 
-(authors "Author")
+(authors "aslak01")
 
-(maintainers "Maintainer")
+(maintainers "aslak01")
 
 (license MIT)
 

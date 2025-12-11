@@ -1,0 +1,198 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build-macos:
+    runs-on: macos-14  # Apple Silicon runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.0
+
+      - name: Install dependencies
+        run: opam install . --deps-only --yes
+
+      - name: Build static binary
+        run: |
+          opam exec -- dune build --release
+          # macOS doesn't support fully static binaries, but OCaml runtime is statically linked by default
+
+      - name: Prepare binary
+        run: |
+          cp _build/default/bin/main.exe pg
+          chmod +x pg
+          tar -czvf pg-macos-arm64.tar.gz pg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pg-macos-arm64
+          path: pg-macos-arm64.tar.gz
+
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: ocaml/opam:alpine-ocaml-5.2
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          apk add --no-cache musl-dev gcc make m4 patch git
+
+      - name: Setup opam
+        run: |
+          opam init --disable-sandboxing --bare -y || true
+          opam switch create . ocaml-base-compiler.5.2.0 --no-install -y || opam switch . -y
+          eval $(opam env)
+
+      - name: Install dependencies
+        run: |
+          eval $(opam env)
+          opam install . --deps-only --yes
+
+      - name: Build static binary
+        run: |
+          eval $(opam env)
+          OCAMLPARAM="_,ccopt=-static,cclib=-static" dune build --release
+
+      - name: Verify static linking
+        run: |
+          file _build/default/bin/main.exe
+          ldd _build/default/bin/main.exe 2>&1 || echo "Static binary (no dynamic dependencies)"
+
+      - name: Prepare binary
+        run: |
+          cp _build/default/bin/main.exe pg
+          chmod +x pg
+          tar -czvf pg-linux-x86_64.tar.gz pg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pg-linux-x86_64
+          path: pg-linux-x86_64.tar.gz
+
+  release:
+    needs: [build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pg-macos-arm64
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pg-linux-x86_64
+
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          echo "MACOS_SHA=$(sha256sum pg-macos-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "LINUX_SHA=$(sha256sum pg-linux-x86_64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pg-macos-arm64.tar.gz
+            pg-linux-x86_64.tar.gz
+          generate_release_notes: true
+
+      - name: Clone Homebrew Repo
+        run: |
+          git clone https://aslak01:${{ secrets.TAP_GITHUB_TOKEN }}@github.com/aslak01/homebrew-stuff.git brew-stuff
+          cd brew-stuff
+          git checkout master
+
+      - name: Update Homebrew Formula
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Building formula for version: $TAG"
+          echo "macOS checksum: $MACOS_SHA"
+          mkdir -p ./brew-stuff/Formula
+
+          # Versioned formula
+          cat > ./brew-stuff/Formula/pg@${TAG}.rb <<EOF
+          class PgAT${TAG//./} < Formula
+            desc "A TUI for searching torrents with vim-style navigation"
+            homepage "https://github.com/aslak01/pg"
+            version "${TAG}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-macos-arm64.tar.gz"
+                sha256 "$MACOS_SHA"
+              end
+            end
+
+            on_linux do
+              on_intel do
+                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-linux-x86_64.tar.gz"
+                sha256 "$LINUX_SHA"
+              end
+            end
+
+            def install
+              bin.install "pg"
+            end
+          end
+          EOF
+
+          # Main formula (always latest)
+          cat > ./brew-stuff/Formula/pg.rb <<EOF
+          class Pg < Formula
+            desc "A TUI for searching torrents with vim-style navigation"
+            homepage "https://github.com/aslak01/pg"
+            version "${TAG}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-macos-arm64.tar.gz"
+                sha256 "$MACOS_SHA"
+              end
+            end
+
+            on_linux do
+              on_intel do
+                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-linux-x86_64.tar.gz"
+                sha256 "$LINUX_SHA"
+              end
+            end
+
+            def install
+              bin.install "pg"
+            end
+          end
+          EOF
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.BREW_DEPLOY_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Push Brew formula
+        run: |
+          cd ./brew-stuff
+          git add Formula/
+          git config --local user.name github-actions
+          git config --local user.email github-actions@github.com
+          git commit -m "formula update pg ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
+          git remote set-url origin git@github.com:aslak01/homebrew-stuff.git
+          git push origin master
