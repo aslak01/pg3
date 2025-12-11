@@ -18,12 +18,12 @@ jobs:
           ocaml-compiler: 5.2.0
 
       - name: Install dependencies
-        run: opam install . --deps-only --yes
-
-      - name: Build static binary
         run: |
-          opam exec -- dune build --release
-          # macOS doesn't support fully static binaries, but OCaml runtime is statically linked by default
+          opam install . --deps-only --yes
+
+      - name: Build binary
+        run: |
+          opam exec -- dune build --profile=release
 
       - name: Prepare binary
         run: |
@@ -48,7 +48,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apk add --no-cache musl-dev gcc make m4 patch git
+          apk add --no-cache musl-dev gcc make m4 patch git gmp-dev linux-headers pkgconfig
 
       - name: Setup opam
         run: |
@@ -64,9 +64,10 @@ jobs:
       - name: Build static binary
         run: |
           eval $(opam env)
-          OCAMLPARAM="_,ccopt=-static,cclib=-static" dune build --release
+          # Build with static profile (includes -cclib -static for fully static binary)
+          dune build --profile=static
 
-      - name: Verify static linking
+      - name: Verify static binary
         run: |
           file _build/default/bin/main.exe
           ldd _build/default/bin/main.exe 2>&1 || echo "Static binary (no dynamic dependencies)"

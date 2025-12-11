@@ -27,4 +27,5 @@
   tls-lwt
   lwt
   yojson
-  uri))
+  uri
+  spawn))
