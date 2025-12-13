@@ -127,44 +127,18 @@ jobs:
       - name: Update Homebrew Formula
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          echo "Building formula for version: $TAG"
+          # Strip 'v' prefix for version field (e.g., v2.1.2 -> 2.1.2)
+          VERSION="${TAG#v}"
+          echo "Building formula for tag: $TAG, version: $VERSION"
           echo "macOS checksum: $MACOS_SHA"
           mkdir -p ./brew-stuff/Formula
-
-          # Versioned formula
-          cat > ./brew-stuff/Formula/pg@${TAG}.rb <<EOF
-          class PgAT${TAG//./} < Formula
-            desc "A TUI for searching torrents with vim-style navigation"
-            homepage "https://github.com/aslak01/pg"
-            version "${TAG}"
-            license "MIT"
-
-            on_macos do
-              on_arm do
-                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-macos-arm64.tar.gz"
-                sha256 "$MACOS_SHA"
-              end
-            end
-
-            on_linux do
-              on_intel do
-                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-linux-x86_64.tar.gz"
-                sha256 "$LINUX_SHA"
-              end
-            end
-
-            def install
-              bin.install "pg"
-            end
-          end
-          EOF
 
           # Main formula (always latest)
           cat > ./brew-stuff/Formula/pg.rb <<EOF
           class Pg < Formula
             desc "A TUI for searching torrents with vim-style navigation"
             homepage "https://github.com/aslak01/pg"
-            version "${TAG}"
+            version "${VERSION}"
             license "MIT"
 
             on_macos do
