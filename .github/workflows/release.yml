@@ -137,20 +137,20 @@ jobs:
           cat > ./brew-stuff/Formula/pg.rb <<EOF
           class Pg < Formula
             desc "A TUI for searching torrents with vim-style navigation"
-            homepage "https://github.com/aslak01/pg"
+            homepage "https://github.com/aslak01/pg3"
             version "${VERSION}"
             license "MIT"
 
             on_macos do
               on_arm do
-                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-macos-arm64.tar.gz"
+                url "https://github.com/aslak01/pg3/releases/download/${TAG}/pg-macos-arm64.tar.gz"
                 sha256 "$MACOS_SHA"
               end
             end
 
             on_linux do
               on_intel do
-                url "https://github.com/aslak01/pg/releases/download/${TAG}/pg-linux-x86_64.tar.gz"
+                url "https://github.com/aslak01/pg3/releases/download/${TAG}/pg-linux-x86_64.tar.gz"
                 sha256 "$LINUX_SHA"
               end
             end
